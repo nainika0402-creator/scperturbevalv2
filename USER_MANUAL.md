@@ -50,10 +50,12 @@ Entry point:
 - `scripts/run_baselines.py`
 
 Supported baselines:
-- `control_baseline`
-- `global_delta`
-- `linear_baseline`
+- `control`
+- `global_delta_additive`
+- `linear`
 - `one_layer_mlp`
+- `latent_additive`
+- `decoder_only`
 
 Example (MLP):
 
@@ -61,6 +63,41 @@ Example (MLP):
 python scripts/run_baselines.py \
   --processed-dir /path/to/fold0_preprocessed \
   --baseline one_layer_mlp \
+  --steps 5000 \
+  --hidden-dim 1024 \
+  --lr 1e-3 \
+  --seed 42 \
+  --early-stopping \
+  --val-fraction 0.2 \
+  --patience 20 \
+  --min-delta 1e-4 \
+  --out-dir /path/to/fold0_baseline
+```
+
+Example (Latent Additive):
+
+```bash
+python scripts/run_baselines.py \
+  --processed-dir /path/to/fold0_preprocessed \
+  --baseline latent_additive \
+  --steps 5000 \
+  --hidden-dim 1024 \
+  --latent-dim 64 \
+  --lr 1e-3 \
+  --seed 42 \
+  --early-stopping \
+  --val-fraction 0.2 \
+  --patience 20 \
+  --min-delta 1e-4 \
+  --out-dir /path/to/fold0_baseline
+```
+
+Example (Decoder Only):
+
+```bash
+python scripts/run_baselines.py \
+  --processed-dir /path/to/fold0_preprocessed \
+  --baseline decoder_only \
   --steps 5000 \
   --hidden-dim 1024 \
   --lr 1e-3 \
