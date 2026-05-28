@@ -130,9 +130,9 @@ def preprocess_and_save_norman(
     all_path = output_dir / "norman_processed_all.h5ad"
     train_path = output_dir / "norman_processed_train.h5ad"
     test_path = output_dir / "norman_processed_test.h5ad"
-    adata.write_h5ad(all_path)
-    adata_train.write_h5ad(train_path)
-    adata_test.write_h5ad(test_path)
+    adata.write_h5ad(all_path, compression="gzip")
+    adata_train.write_h5ad(train_path, compression="gzip")
+    adata_test.write_h5ad(test_path, compression="gzip")
 
     meta = {
         "source_h5ad": str(norman_h5ad),
