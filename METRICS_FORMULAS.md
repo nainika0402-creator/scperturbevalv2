@@ -4,23 +4,23 @@ This document describes how metrics are calculated in `scPerturbEval` (from `src
 
 ## Quick metric cheat sheet
 
-| Metric | Better | What it captures (short) |
+| Metric (code name) | Better | What it captures (short) |
 |---|---|---|
-| `root_mean_squared_error` | lower | Mean-profile error magnitude per condition |
-| `pearson_distance` | lower | 1 - Pearson correlation of real vs predicted mean profiles |
-| `wasserstein` | lower | Distribution mismatch (gene-wise Wasserstein, averaged) |
-| `mmd` | lower | Kernel two-sample distance between predicted and real cell distributions |
-| `pcc_delta` | higher | Correlation of perturbation effects vs control (`Delta_real` vs `Delta_pred`) |
-| `top_deg_recall` | higher | Fraction of top-N real DEGs recovered by top-N predicted DEGs |
-| `deg_direction_agreement` | higher | Sign agreement of logFC on overlapping selected DEGs |
-| `deg_spearman_lfc` | higher | Rank correlation of logFC on selected real DEGs |
-| `pds_cosine` | higher | How highly each condition’s true effect is ranked by predicted effect similarity |
-| `matrix_distance` | lower | Difference between condition-condition cosine structure (pred vs real) |
-| `wmse` | lower | DEG-weighted mean-squared error on condition mean profile |
-| `pearson_delta_pert` | higher | Correlation of condition deltas from global perturbed centroid |
-| `weighted_r2_delta` | higher | Weighted explained variance of centroid-referenced perturbation deltas |
-| `pathway_nes_spearman` | higher | Pathway-level NES rank consistency (GSEA-based) |
-| `pathway_topk_jaccard` | higher | Overlap of top-K pathways by absolute NES |
+| Root Mean Squared Error (`root_mean_squared_error`) | lower | Mean-profile error magnitude per condition |
+| Pearson Distance (`pearson_distance`) | lower | 1 - Pearson correlation of real vs predicted mean profiles |
+| Wasserstein-1 Distance (`wasserstein`) | lower | Distribution mismatch (gene-wise Wasserstein, averaged) |
+| Maximum Mean Discrepancy (`mmd`) | lower | Kernel two-sample distance between predicted and real cell distributions |
+| Delta Pearson Correlation (`pcc_delta`) | higher | Correlation of perturbation effects vs control (`Delta_real` vs `Delta_pred`) |
+| Top-DEG Recall (`top_deg_recall`) | higher | Fraction of top-N real DEGs recovered by top-N predicted DEGs |
+| DEG Direction Agreement (`deg_direction_agreement`) | higher | Sign agreement of logFC on overlapping selected DEGs |
+| DEG Spearman (logFC) (`deg_spearman_lfc`) | higher | Rank correlation of logFC on selected real DEGs |
+| Perturbation Distance Score, Cosine (`pds_cosine`) | higher | How highly each condition’s true effect is ranked by predicted effect similarity |
+| Matrix Distance (`matrix_distance`) | lower | Difference between condition-condition cosine structure (pred vs real) |
+| Weighted Mean Squared Error (`wmse`) | lower | DEG-weighted mean-squared error on condition mean profile |
+| Perturbation-Centroid Delta Pearson (`pearson_delta_pert`) | higher | Correlation of condition deltas from global perturbed centroid |
+| Weighted R² on Delta (`weighted_r2_delta`) | higher | Weighted explained variance of centroid-referenced perturbation deltas |
+| Pathway NES Spearman (`pathway_nes_spearman`) | higher | Pathway-level NES rank consistency (GSEA-based) |
+| Pathway Top-K Jaccard (`pathway_topk_jaccard`) | higher | Overlap of top-K pathways by absolute NES |
 
 ## Notation
 
