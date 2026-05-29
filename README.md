@@ -32,7 +32,16 @@ For complete step-by-step instructions, examples, and troubleshooting, see:
 - [`USER_MANUAL.md`](./USER_MANUAL.md)
 - [`METRICS_FORMULAS.md`](./METRICS_FORMULAS.md)
 
+## Datasets
+
+- `data/norman.zip`
+- `data/baseline_results.zip`
+
 ## Example notebooks
 
-- `baseline_models.ipynb`
-- `scdfm_model.ipynb`
+- `notebooks/notebooks/baseline_models.ipynb`
+- `notebooks/notebooks/scdfm_model.ipynb`
+
+## Runtime note
+
+- Experiments were run on Google Colab Pro with NVIDIA `T4` / `A100` GPUs.
