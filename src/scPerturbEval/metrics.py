@@ -607,8 +607,15 @@ def compute_metrics_with_space(
                     real_sig = None
                     pred_sig = None
                     if any(m in metrics for m in de_style_metrics):
-                        real_logfc = np.log2((_safe_mean(tx_real) + lfc_eps) / (_safe_mean(tx_ctrl_real) + lfc_eps))
-                        pred_logfc = np.log2((_safe_mean(tx_pred) + lfc_eps) / (_safe_mean(tx_ctrl_pred) + lfc_eps))
+                        # Robust logFC on model outputs: floor means at zero before log transform.
+                        # This matches common expression-space assumptions (nonnegative values)
+                        # while keeping pseudocount-based logFC behavior.
+                        real_mean = np.clip(_safe_mean(tx_real), a_min=0.0, a_max=None)
+                        real_ctrl_mean = np.clip(_safe_mean(tx_ctrl_real), a_min=0.0, a_max=None)
+                        pred_mean = np.clip(_safe_mean(tx_pred), a_min=0.0, a_max=None)
+                        pred_ctrl_mean = np.clip(_safe_mean(tx_ctrl_pred), a_min=0.0, a_max=None)
+                        real_logfc = np.log2((real_mean + lfc_eps) / (real_ctrl_mean + lfc_eps))
+                        pred_logfc = np.log2((pred_mean + lfc_eps) / (pred_ctrl_mean + lfc_eps))
                         if deg_selection == "topn":
                             real_sig, pred_sig = _topn_deg_masks_from_logfc(
                                 real_logfc,
