@@ -85,10 +85,6 @@ python scripts/run_baselines.py \
   --latent-dim 64 \
   --lr 1e-3 \
   --seed 42 \
-  --early-stopping \
-  --val-fraction 0.2 \
-  --patience 20 \
-  --min-delta 1e-4 \
   --out-dir /path/to/fold0_baseline
 ```
 

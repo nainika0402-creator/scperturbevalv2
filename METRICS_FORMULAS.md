@@ -41,24 +41,24 @@ Most metrics are reported per condition (row-wise), then aggregated (global mean
 
 ## Core vector/distribution metrics
 
-### 1) `root_mean_squared_error`
+### 1) Root Mean Squared Error [`root_mean_squared_error`]
 Per condition:
 
 `RMSE(c) = sqrt((1/G) * sum_g (mu_real^c[g] - mu_pred^c[g])^2)`
 
-### 2) `pearson_distance`
+### 2) Pearson Distance [`pearson_distance`]
 Per condition:
 
 `pearson_distance(c) = 1 - corr(mu_real^c, mu_pred^c)`
 
-### 3) `wasserstein`
+### 3) Wasserstein-1 Distance [`wasserstein`]
 Per condition, per gene 1D Wasserstein, then averaged:
 
 `W_g(c) = W1(X_real^c[:, g], X_pred^c[:, g])`
 
 `wasserstein(c) = (1/G) * sum_g W_g(c)`
 
-### 4) `mmd`
+### 4) Maximum Mean Discrepancy [`mmd`]
 Gaussian-kernel MMD^2 on cell distributions:
 
 `MMD^2(c) = E[k(x,x')] - 2E[k(x,y)] + E[k(y,y')]`
@@ -70,17 +70,21 @@ with `x, x' ~ X_pred^c`, `y, y' ~ X_real^c`,
 
 ## Control-referenced metrics (require `--control-label`)
 
-### 5) `pcc_delta`
+### 5) Delta Pearson Correlation [`pcc_delta`]
 Per condition:
 
 `pcc_delta(c) = corr(Delta_real^c, Delta_pred^c)`
 
-### 6) `top_deg_recall`
+### 6) Top-DEG Recall [`top_deg_recall`]
 By default (`deg_selection="topn"`), DEGs are selected separately in real and predicted
-as top-N genes ranked by absolute logFC (condition vs control):
+as top-N genes ranked by absolute logFC (condition vs control). To keep logFC stable
+on model outputs, means are floored at zero before adding epsilon:
 
-- `logFC_real[g] = log2((mu_real^c[g] + eps)/(mu_real^ctrl[g] + eps))`
-- `logFC_pred[g] = log2((mu_pred^c[g] + eps)/(mu_pred^ctrl[g] + eps))`
+- `mu~_real^c[g] = max(mu_real^c[g], 0)`, `mu~_real^ctrl[g] = max(mu_real^ctrl[g], 0)`
+- `mu~_pred^c[g] = max(mu_pred^c[g], 0)`, `mu~_pred^ctrl[g] = max(mu_pred^ctrl[g], 0)`
+
+- `logFC_real[g] = log2((mu~_real^c[g] + eps)/(mu~_real^ctrl[g] + eps))`
+- `logFC_pred[g] = log2((mu~_pred^c[g] + eps)/(mu~_pred^ctrl[g] + eps))`
 - `S_real^c = topN(|logFC_real|)`, `S_pred^c = topN(|logFC_pred|)`, with `N=top_n_degs` (default 100)
 - if fewer than `N` genes exist, use all genes
 
@@ -91,21 +95,21 @@ with `S_real^c`, `S_pred^c` defined by `FDR <= deg_fdr_threshold`.
 
 (if denominator is 0, returns NaN)
 
-### 7) `deg_direction_agreement` (aka direction_agreement)
+### 7) DEG Direction Agreement [`deg_direction_agreement`]
 On overlap `S_real^c ∩ S_pred^c`:
 
 `deg_direction_agreement(c) = mean( sign(logFC_real[g]) == sign(logFC_pred[g]) )`
 
 over overlap genes; NaN if overlap is empty.
 
-### 8) `deg_spearman_lfc`
+### 8) DEG Spearman (logFC) [`deg_spearman_lfc`]
 On genes selected in real (`S_real^c`):
 
 `deg_spearman_lfc(c) = SpearmanCorr(logFC_real[S_real^c], logFC_pred[S_real^c])`
 
 NaN if `S_real^c` empty.
 
-### 9) `pds_cosine`
+### 9) Perturbation Distance Score (Cosine) [`pds_cosine`]
 For each condition `c`, compare predicted effect vector `Delta_pred^c` to all real effect vectors `{Delta_real^j}` using cosine distance.
 
 Score is normalized rank of correct match `j=c`:
@@ -114,7 +118,7 @@ Score is normalized rank of correct match `j=c`:
 
 where rank is 0 for best (closest) match; higher is better.
 
-### 10) `matrix_distance`
+### 10) Matrix Distance [`matrix_distance`]
 Build cosine-similarity matrices across conditions:
 
 `S_pred[i,j] = cos(Delta_pred^i, Delta_pred^j)`
@@ -137,12 +141,12 @@ For non-control conditions, define global real centroid:
 
 and DEG-derived condition weights `w^c in R^G` (nonnegative, sum to 1), from condition-vs-rest absolute t-statistics.
 
-### 11) `wmse`
+### 11) Weighted Mean Squared Error [`wmse`]
 Per condition:
 
 `wmse(c) = sum_g w^c[g] * (mu_real^c[g] - mu_pred^c[g])^2`
 
-### 12) `pearson_delta_pert`
+### 12) Perturbation-Centroid Delta Pearson [`pearson_delta_pert`]
 Per condition:
 
 `d_real^c = mu_real^c - mu_all`
@@ -151,7 +155,7 @@ Per condition:
 
 `pearson_delta_pert(c) = corr(d_real^c, d_pred^c)`
 
-### 13) `weighted_r2_delta` (weighted R²(Δ))
+### 13) Weighted R² on Delta [`weighted_r2_delta`]
 Per condition with `d_real^c, d_pred^c` as above and normalized weights `w^c`:
 
 `dbar = sum_g w^c[g] * d_real^c[g]`
@@ -170,13 +174,13 @@ Let `delta_real = mu_real^c - ref`, `delta_pred = mu_pred^c - ref`, where `ref` 
 
 Run prerank GSEA on both ranked gene lists to get NES vectors.
 
-### 14) `pathway_nes_spearman`
+### 14) Pathway NES Spearman [`pathway_nes_spearman`]
 
 `pathway_nes_spearman(c) = SpearmanCorr(NES_real, NES_pred)`
 
 with missing terms filled by 0 after union of pathway sets.
 
-### 15) `pathway_topk_jaccard`
+### 15) Pathway Top-K Jaccard [`pathway_topk_jaccard`]
 Top-K by absolute NES in each:
 
 `pathway_topk_jaccard(c) = |TopK_real ∩ TopK_pred| / |TopK_real ∪ TopK_pred|`

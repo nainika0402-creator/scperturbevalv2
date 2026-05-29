@@ -30,16 +30,9 @@ pip install -r requirements.txt
 For complete step-by-step instructions, examples, and troubleshooting, see:
 
 - [`USER_MANUAL.md`](./USER_MANUAL.md)
+- [`METRICS_FORMULAS.md`](./METRICS_FORMULAS.md)
 
-## Notebook Note
+## Example notebooks
 
-If you run Colab/Jupyter notebooks, use:
-
-```bash
-python -m scPerturbEval.evaluations ...
-```
-
-instead of older calls like `scPerturbEval.compute_metrics_space`.
-
-Example notebook:
-- `notebooks/scdfm_metrics_run.ipynb` shows an end-to-end fold-wise evaluation workflow (raw + PCA passes) and cross-fold aggregation.
+- `baseline_models.ipynb`
+- `scdfm_model.ipynb`
