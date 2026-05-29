@@ -363,8 +363,10 @@ def run_baseline(
                 steps=steps,
                 lr=lr,
                 seed=seed,
-                early_stopping=early_stopping,
-                val_fraction=val_fraction,
+                # Keep x/p row alignment intact for latent_additive.
+                # Splitting inside the generic trainer breaks this alignment.
+                early_stopping=False,
+                val_fraction=0.0,
                 patience=patience,
                 min_delta=min_delta,
             )
