@@ -25,6 +25,18 @@ def parse_args() -> argparse.Namespace:
         help="Metrics to compute",
     )
     parser.add_argument("--min-cells", type=int, default=1, help="Minimum cells per condition")
+    parser.add_argument(
+        "--deg-selection",
+        choices=["topn", "fdr"],
+        default="topn",
+        help="DEG selection mode for DEG-style metrics: fixed top-N abs(logFC) or legacy FDR.",
+    )
+    parser.add_argument(
+        "--top-n-degs",
+        type=int,
+        default=100,
+        help="Top-N genes per condition for DEG-style metrics when --deg-selection topn.",
+    )
     parser.add_argument("--out", default="results/metrics.csv", help="Output CSV path")
     return parser.parse_args()
 
@@ -38,6 +50,8 @@ def main() -> None:
         metrics=args.metrics,
         min_cells_per_condition=args.min_cells,
         space="raw",
+        deg_selection=args.deg_selection,
+        top_n_degs=args.top_n_degs,
     )
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

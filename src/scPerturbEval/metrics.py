@@ -154,6 +154,29 @@ def _de_sig_masks(
     return real_sig, pred_sig
 
 
+def _topn_deg_masks_from_logfc(
+    real_logfc: np.ndarray,
+    pred_logfc: np.ndarray,
+    *,
+    top_n_degs: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Select DEGs by absolute logFC rank from real/pred profiles.
+
+    If fewer than `top_n_degs` genes are available, all genes are used.
+    """
+    n_genes = int(real_logfc.shape[0])
+    if n_genes == 0:
+        return np.zeros(0, dtype=bool), np.zeros(0, dtype=bool)
+    k = int(max(1, min(top_n_degs, n_genes)))
+    real_idx = np.argsort(np.abs(real_logfc))[::-1][:k]
+    pred_idx = np.argsort(np.abs(pred_logfc))[::-1][:k]
+    real_sig = np.zeros(n_genes, dtype=bool)
+    pred_sig = np.zeros(n_genes, dtype=bool)
+    real_sig[real_idx] = True
+    pred_sig[pred_idx] = True
+    return real_sig, pred_sig
+
+
 def _direction_agreement(delta_real: np.ndarray, delta_pred: np.ndarray) -> float:
     return float(np.mean(np.sign(delta_real) == np.sign(delta_pred)))
 
@@ -368,6 +391,15 @@ def _matrix_distance_from_deltas(
     cond_to_delta_real: dict[str, np.ndarray],
     cond_to_delta_pred: dict[str, np.ndarray],
 ) -> tuple[float, float, np.ndarray, np.ndarray, np.ndarray]:
+    """Compute PerturBench-scale matrix distance from condition delta vectors.
+
+    Builds cosine-similarity matrices `S_pred` and `S_real` over conditions, then
+    returns the unnormalized Frobenius norm `||S_pred - S_real||_F` as the primary
+    score (lower is better).
+
+    Note: this is on PerturBench's raw scale (not divided by condition count), so
+    values are not directly comparable to previously logged normalized runs.
+    """
     n = len(labels)
     s_pred = np.zeros((n, n), dtype=float)
     s_real = np.zeros((n, n), dtype=float)
@@ -377,8 +409,7 @@ def _matrix_distance_from_deltas(
             s_real[i, j] = _cosine_similarity_safe(cond_to_delta_real[li], cond_to_delta_real[lj])
     diff = s_pred - s_real
     dist_raw = float(np.linalg.norm(diff, ord="fro"))
-    dist_norm = float(dist_raw / max(1, n))
-    return dist_norm, dist_raw, s_pred, s_real, diff
+    return dist_raw, dist_raw, s_pred, s_real, diff
 
 
 def compute_metrics_with_space(
@@ -395,11 +426,19 @@ def compute_metrics_with_space(
     deg_top_n: int = 0,
     top_k_deg: int = 50,
     deg_fdr_threshold: float = 0.05,
+    deg_selection: str = "topn",
+    top_n_degs: int = 100,
     lfc_eps: float = 1e-8,
     pathway_gene_sets: str = "MSigDB_Hallmark_2020",
     pathway_top_k: int = 10,
     pathway_reference: str = "perturbed_centroid",
 ) -> pd.DataFrame:
+    """Compute perturbation metrics over paired real/pred AnnData files.
+
+    For DEG-style metrics, DEG selection is controlled by `deg_selection`:
+    `topn` (default) uses fixed top-N by absolute logFC in real and predicted;
+    `fdr` restores legacy t-test + BH-FDR selection.
+    """
     spec = DatasetSpec(
         condition_columns=[condition_column],
         split_column=None,
@@ -448,6 +487,8 @@ def compute_metrics_with_space(
             "deg_direction_agreement, deg_spearman_lfc, pds_cosine, "
             "cosine_logfc_rank, matrix_distance)."
         )
+    if deg_selection not in {"topn", "fdr"}:
+        raise ValueError("deg_selection must be one of {'topn','fdr'}.")
 
     if control_label is not None and needs_control:
         ctrl_key = (control_label,)
@@ -562,29 +603,36 @@ def compute_metrics_with_space(
                         cond_to_delta_pred[condition[0]] = delta_pred
 
                     real_logfc = None
-                    real_fdr = None
                     pred_logfc = None
-                    pred_fdr = None
                     real_sig = None
                     pred_sig = None
                     if any(m in metrics for m in de_style_metrics):
-                        real_logfc, real_fdr = _de_table_from_matrices(
-                            tx_real,
-                            tx_ctrl_real,
-                            lfc_eps=lfc_eps,
-                        )
-                        pred_logfc, pred_fdr = _de_table_from_matrices(
-                            tx_pred,
-                            tx_ctrl_pred,
-                            lfc_eps=lfc_eps,
-                        )
-                        real_sig, pred_sig = _de_sig_masks(
-                            real_logfc,
-                            real_fdr,
-                            pred_logfc,
-                            pred_fdr,
-                            fdr_threshold=deg_fdr_threshold,
-                        )
+                        real_logfc = np.log2((_safe_mean(tx_real) + lfc_eps) / (_safe_mean(tx_ctrl_real) + lfc_eps))
+                        pred_logfc = np.log2((_safe_mean(tx_pred) + lfc_eps) / (_safe_mean(tx_ctrl_pred) + lfc_eps))
+                        if deg_selection == "topn":
+                            real_sig, pred_sig = _topn_deg_masks_from_logfc(
+                                real_logfc,
+                                pred_logfc,
+                                top_n_degs=top_n_degs,
+                            )
+                        else:
+                            _, real_fdr = _de_table_from_matrices(
+                                tx_real,
+                                tx_ctrl_real,
+                                lfc_eps=lfc_eps,
+                            )
+                            _, pred_fdr = _de_table_from_matrices(
+                                tx_pred,
+                                tx_ctrl_pred,
+                                lfc_eps=lfc_eps,
+                            )
+                            real_sig, pred_sig = _de_sig_masks(
+                                real_logfc,
+                                real_fdr,
+                                pred_logfc,
+                                pred_fdr,
+                                fdr_threshold=deg_fdr_threshold,
+                            )
 
                     if metric == "pcc_delta":
                         corr = pearsonr(delta_real, delta_pred)[0]
@@ -814,7 +862,19 @@ def parse_args() -> argparse.Namespace:
         "--deg-fdr-threshold",
         type=float,
         default=0.05,
-        help="FDR threshold for DE-table metrics (top_deg_recall/precision, direction, spearman_lfc).",
+        help="FDR threshold for DEG-style metrics when --deg-selection fdr.",
+    )
+    parser.add_argument(
+        "--deg-selection",
+        choices=["topn", "fdr"],
+        default="topn",
+        help="DEG selection mode for DEG-style metrics: fixed top-N abs(logFC) or legacy FDR.",
+    )
+    parser.add_argument(
+        "--top-n-degs",
+        type=int,
+        default=100,
+        help="Top-N genes per condition for DEG-style metrics when --deg-selection topn.",
     )
     parser.add_argument(
         "--lfc-eps",
@@ -854,6 +914,8 @@ def main() -> None:
         deg_top_n=args.deg_top_n,
         top_k_deg=args.top_k_deg,
         deg_fdr_threshold=args.deg_fdr_threshold,
+        deg_selection=args.deg_selection,
+        top_n_degs=args.top_n_degs,
         lfc_eps=args.lfc_eps,
         pathway_gene_sets=args.pathway_gene_sets,
         pathway_top_k=args.pathway_top_k,

@@ -11,9 +11,9 @@ This document describes how metrics are calculated in `scPerturbEval` (from `src
 | `wasserstein` | lower | Distribution mismatch (gene-wise Wasserstein, averaged) |
 | `mmd` | lower | Kernel two-sample distance between predicted and real cell distributions |
 | `pcc_delta` | higher | Correlation of perturbation effects vs control (`Delta_real` vs `Delta_pred`) |
-| `top_deg_recall` | higher | Fraction of real significant DEGs recovered by prediction |
-| `deg_direction_agreement` | higher | Sign agreement of logFC on overlapping significant DEGs |
-| `deg_spearman_lfc` | higher | Rank correlation of logFC on real significant DEGs |
+| `top_deg_recall` | higher | Fraction of top-N real DEGs recovered by top-N predicted DEGs |
+| `deg_direction_agreement` | higher | Sign agreement of logFC on overlapping selected DEGs |
+| `deg_spearman_lfc` | higher | Rank correlation of logFC on selected real DEGs |
 | `pds_cosine` | higher | How highly each condition’s true effect is ranked by predicted effect similarity |
 | `matrix_distance` | lower | Difference between condition-condition cosine structure (pred vs real) |
 | `wmse` | lower | DEG-weighted mean-squared error on condition mean profile |
@@ -76,14 +76,16 @@ Per condition:
 `pcc_delta(c) = corr(Delta_real^c, Delta_pred^c)`
 
 ### 6) `top_deg_recall`
-DEGs are called separately in real and predicted (condition vs control), using:
+By default (`deg_selection="topn"`), DEGs are selected separately in real and predicted
+as top-N genes ranked by absolute logFC (condition vs control):
 
-- logFC from means
-- t-test p-values per gene
-- Benjamini-Hochberg FDR
-- significant if `FDR <= deg_fdr_threshold`
+- `logFC_real[g] = log2((mu_real^c[g] + eps)/(mu_real^ctrl[g] + eps))`
+- `logFC_pred[g] = log2((mu_pred^c[g] + eps)/(mu_pred^ctrl[g] + eps))`
+- `S_real^c = topN(|logFC_real|)`, `S_pred^c = topN(|logFC_pred|)`, with `N=top_n_degs` (default 100)
+- if fewer than `N` genes exist, use all genes
 
-Let `S_real^c`, `S_pred^c` be significant-gene sets.
+Legacy mode (`deg_selection="fdr"`) recovers prior behavior using t-test + Benjamini-Hochberg,
+with `S_real^c`, `S_pred^c` defined by `FDR <= deg_fdr_threshold`.
 
 `top_deg_recall(c) = |S_real^c ∩ S_pred^c| / |S_real^c|`
 
@@ -97,7 +99,7 @@ On overlap `S_real^c ∩ S_pred^c`:
 over overlap genes; NaN if overlap is empty.
 
 ### 8) `deg_spearman_lfc`
-On genes significant in real (`S_real^c`):
+On genes selected in real (`S_real^c`):
 
 `deg_spearman_lfc(c) = SpearmanCorr(logFC_real[S_real^c], logFC_pred[S_real^c])`
 
@@ -123,9 +125,9 @@ Build cosine-similarity matrices across conditions:
 
 Global score:
 
-`matrix_distance = ||D||_F / N`
+`matrix_distance = ||D||_F`
 
-(Frobenius norm, normalized by number of conditions `N`)
+(Unnormalized Frobenius norm; lower is better. This matches PerturBench scale and is not comparable to older normalized `/N` runs.)
 
 ## Perturbation-centroid referenced metrics
 

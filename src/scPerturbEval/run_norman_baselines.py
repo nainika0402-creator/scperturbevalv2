@@ -395,12 +395,28 @@ def run_baseline(
     else:
         raise ValueError(f"Unsupported baseline: {baseline}")
 
+    # Include real control rows in outputs (scDFM/scPerturBench-style export):
+    # control predictions are copied from observed control expression.
+    eval_idx = np.where(eval_mask)[0]
+    ctrl_idx = np.where(test_obs["is_control"].to_numpy().astype(bool))[0]
+    ctrl_only_idx = np.setdiff1d(ctrl_idx, eval_idx)
+    if ctrl_only_idx.shape[0] > 0:
+        ctrl_obs = test_obs.iloc[ctrl_only_idx].copy()
+        ctrl_x = test_x[ctrl_only_idx].astype(np.float32)
+        final_obs = pd.concat([ctrl_obs, eval_obs], axis=0)
+        final_x = np.vstack([ctrl_x, eval_x]).astype(np.float32)
+        final_pred = np.vstack([ctrl_x, pred_x]).astype(np.float32)
+    else:
+        final_obs = eval_obs.copy()
+        final_x = eval_x.astype(np.float32)
+        final_pred = pred_x.astype(np.float32)
+
     rows = []
-    cond_arr = eval_obs["condition"].astype(str).to_numpy()
+    cond_arr = final_obs["condition"].astype(str).to_numpy()
     for cond in np.unique(cond_arr):
         idx = np.where(cond_arr == cond)[0]
-        real_c = eval_x[idx]
-        pred_c = pred_x[idx]
+        real_c = final_x[idx]
+        pred_c = final_pred[idx]
         real_m = _safe_mean(real_c)
         pred_m = _safe_mean(pred_c)
         corr = pearsonr(real_m, pred_m)[0]
@@ -416,8 +432,8 @@ def run_baseline(
 
     metrics_df = pd.DataFrame(rows).sort_values("condition").reset_index(drop=True)
 
-    pred_adata = ad.AnnData(X=pred_x, obs=eval_obs.copy(), var=adata_test.var.copy())
-    real_adata = ad.AnnData(X=eval_x, obs=eval_obs.copy(), var=adata_test.var.copy())
+    pred_adata = ad.AnnData(X=final_pred, obs=final_obs.copy(), var=adata_test.var.copy())
+    real_adata = ad.AnnData(X=final_x, obs=final_obs.copy(), var=adata_test.var.copy())
 
     metrics_path = out_dir / f"{baseline}_metrics.csv"
     pred_path = out_dir / f"{baseline}_pred.h5ad"

@@ -45,6 +45,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--deg-top-n", type=int, default=0, help="Optional cap on number of DEGs (0 = no cap)")
     parser.add_argument("--top-k-deg", type=int, default=50, help="K for top DEG recall metric")
     parser.add_argument(
+        "--deg-selection",
+        choices=["topn", "fdr"],
+        default="topn",
+        help="DEG selection mode for DEG-style metrics: fixed top-N abs(logFC) or legacy FDR.",
+    )
+    parser.add_argument(
+        "--top-n-degs",
+        type=int,
+        default=100,
+        help="Top-N genes per condition for DEG-style metrics when --deg-selection topn.",
+    )
+    parser.add_argument(
         "--pathway-gene-sets",
         default="MSigDB_Hallmark_2020",
         help="GSEApy gene sets name or GMT path for pathway recovery metrics.",
@@ -82,6 +94,8 @@ def main() -> None:
         deg_lfc=args.deg_lfc,
         deg_top_n=args.deg_top_n,
         top_k_deg=args.top_k_deg,
+        deg_selection=args.deg_selection,
+        top_n_degs=args.top_n_degs,
         pathway_gene_sets=args.pathway_gene_sets,
         pathway_top_k=args.pathway_top_k,
         pathway_reference=args.pathway_reference,
