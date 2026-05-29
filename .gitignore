@@ -1,3 +1,7 @@
 
 # local large data
 /data/*.zip
+
+# local large data
+/data/*.zip
+.DS_Store
